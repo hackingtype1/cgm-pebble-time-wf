@@ -18,7 +18,9 @@ static Layer * s_canvas_layer;
 
 static GPoint s_center;
 static Time s_last_time, s_anim_time;
-static int s_radius = 0, t_delta = 0, has_launched = 0, vibe_state = 1, alert_state = 0 ,s_anim_hours_60 = 0, com_alert = 1;
+static int s_radius = 0, t_delta = 0, has_launched = 0, vibe_state = 1,
+           alert_vibe_strength = 2, bg_vibe_strength = 1, alert_state = 0,
+           s_anim_hours_60 = 0, com_alert = 1;
 static bool s_animating = false;
 
 static GBitmap *icon_bitmap = NULL;
@@ -38,8 +40,10 @@ enum CgmKey {
     CGM_TREND_KEY = 0x2,
     CGM_ALERT_KEY = 0x3,
     CGM_VIBE_KEY = 0x4,
-    CGM_ID = 0x5,
-    CGM_TIME_DELTA_KEY = 0x6,
+    CGM_ALERT_VIBE_KEY = 0x5,
+    CGM_BG_VIBE_KEY = 0x6,
+    CGM_ID = 0x7,
+    CGM_TIME_DELTA_KEY = 0x8,
 };
 
 enum Alerts {
@@ -360,8 +364,22 @@ static void process_alert() {
         s_color_channels[1] = 255;
         s_color_channels[2] = 0;
         
-        if (vibe_state > 0)
-            vibes_long_pulse();
+        if (vibe_state > 0) {
+            switch (alert_vibe_strength) {
+                case 0:
+                    vibes_short_pulse();
+                    break;
+                case 1:
+                    vibes_double_pulse();
+                    break;
+                case 2:
+                    vibes_long_pulse();
+                    break;
+                default:
+                    vibes_long_pulse();
+                    break;
+            }
+        }
             
         APP_LOG(APP_LOG_LEVEL_DEBUG, "Alert key: %i", LOSS_MID_NO_NOISE);
 #ifdef PBL_PLATFORM_BASALT
@@ -383,8 +401,22 @@ static void process_alert() {
         s_color_channels[1] = 0;
         s_color_channels[2] = 0;
         
-       if (vibe_state > 0)
-            vibes_long_pulse();
+       if (vibe_state > 0) {
+            switch (alert_vibe_strength) {
+                case 0:
+                    vibes_short_pulse();
+                    break;
+                case 1:
+                    vibes_double_pulse();
+                    break;
+                case 2:
+                    vibes_long_pulse();
+                    break;
+                default:
+                    vibes_long_pulse();
+                    break;
+            }
+       }
         
         APP_LOG(APP_LOG_LEVEL_DEBUG, "Alert key: %i", LOSS_HIGH_NO_NOISE);
         text_layer_set_text_color(bg_layer, GColorWhite);
@@ -398,8 +430,22 @@ static void process_alert() {
         s_color_channels[1] = 255;
         s_color_channels[2] = 0;
         
-        if (vibe_state > 1)
-            vibes_double_pulse();
+        if (vibe_state > 1) {
+            switch (bg_vibe_strength) {
+                case 0:
+                    vibes_short_pulse();
+                    break;
+                case 1:
+                    vibes_double_pulse();
+                    break;
+                case 2:
+                    vibes_long_pulse();
+                    break;
+                default:
+                    vibes_long_pulse();
+                    break;
+            }
+        }
         
         APP_LOG(APP_LOG_LEVEL_DEBUG, "Alert key: %i", OKAY);
         text_layer_set_text_color(bg_layer, GColorBlack);
@@ -478,6 +524,12 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
                 vibe_state = new_tuple->value->int16;             
                 break;
                 
+            case CGM_ALERT_VIBE_KEY:
+                alert_vibe_strength = new_tuple->value->int16;
+                break;
+            case CGM_BG_VIBE_KEY:
+                bg_vibe_strenth = new_tuple->value->int16;
+                break;
             case CGM_TIME_DELTA_KEY:;
                 t_delta = new_tuple->value->int16;
                 if (t_delta <= 0) {
